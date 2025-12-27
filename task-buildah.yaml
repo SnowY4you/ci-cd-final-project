@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: buildah
+spec:
+  params:
+    - name: IMAGE
+      type: string
+  workspaces:
+    - name: source
+  steps:
+    - name: build-and-push
+      image: quay.io/buildah/stable
+      workingDir: $(workspaces.source.path)
+      # We add the --storage-driver=vfs flag here
+      script: |
+        buildah --storage-driver=vfs bud -t $(params.IMAGE) .
+      securityContext:
+        privileged: false
+        runAsUser: 1000  # Run as a standard user
+        capabilities:
+          add: ["SETFCAP"]
