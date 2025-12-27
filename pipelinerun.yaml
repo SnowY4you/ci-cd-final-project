@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: ci-cd-run-
+  namespace: sn-labs-svanbuggenum
+spec:
+  pipelineRef:
+    name: ci-cd-pipeline
+  params:
+    - name: repo-url
+      value: "https://github.com/SnowY4you/ci-cd-final-project"
+    - name: branch
+      value: "main"
+    - name: build-image
+      value: "hitcounter:latest"
+    - name: app-name
+      value: "hitcounter"
+  workspaces:
+    - name: pipeline-workspace
+      persistentVolumeClaim:
+        claimName: oc-lab-pvc
