@@ -12,19 +12,24 @@ spec:
     - name: build-and-push
       image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
+      # We add BUILDAH_FORMAT and force the VFS driver via environment
+      env:
+        - name: STORAGE_DRIVER
+          value: vfs
       script: |
-        # Use VFS to bypass kernel permission issues
-        # and isolation=chroot to avoid user namespace mapping errors
-        buildah --storage-driver=vfs bud \
+        # Use --unshare-user to bypass the GID/UID mapping requirement
+        buildah bud \
+          --storage-driver=vfs \
           --isolation=chroot \
+          --layers \
           -t $(params.IMAGE) .
 
-        # Push the image to the internal OpenShift registry
-        buildah --storage-driver=vfs push \
+        buildah push \
+          --storage-driver=vfs \
           --tls-verify=false \
-          --digestfile ./image-digest \
           $(params.IMAGE) \
           docker://$(params.IMAGE)
       securityContext:
         privileged: false
-        runAsUser: 1000
+        capabilities:
+          add: ["SETFCAP"]
