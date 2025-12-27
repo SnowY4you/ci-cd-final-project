@@ -13,14 +13,18 @@ spec:
       image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
       script: |
-        # Use VFS driver and force chroot isolation for restricted environments
-        # If --ignore-chown-errors is not supported, we use standard build
+        # Use VFS to bypass kernel permission issues
+        # and isolation=chroot to avoid user namespace mapping errors
         buildah --storage-driver=vfs bud \
           --isolation=chroot \
           -t $(params.IMAGE) .
-          
-        # Note: We are only building locally here. 
-        # In a real pipeline, you would also 'buildah push' to the registry.
+
+        # Push the image to the internal OpenShift registry
+        buildah --storage-driver=vfs push \
+          --tls-verify=false \
+          --digestfile ./image-digest \
+          $(params.IMAGE) \
+          docker://$(params.IMAGE)
       securityContext:
         privileged: false
         runAsUser: 1000
