@@ -13,10 +13,14 @@ spec:
       image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
       script: |
-        # Use vfs and ignore-chown-errors to bypass restricted UID mapping
+        # Use VFS driver and force chroot isolation for restricted environments
+        # If --ignore-chown-errors is not supported, we use standard build
         buildah --storage-driver=vfs bud \
           --isolation=chroot \
-          --ignore-chown-errors \
           -t $(params.IMAGE) .
+          
+        # Note: We are only building locally here. 
+        # In a real pipeline, you would also 'buildah push' to the registry.
       securityContext:
         privileged: false
+        runAsUser: 1000
