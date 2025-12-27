@@ -9,14 +9,17 @@ spec:
   workspaces:
     - name: source
   steps:
-    - name: build-and-push
-      image: quay.io/buildah/stable
+    - name: build
+      image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
-      # We add the --storage-driver=vfs flag here
+      # Use --storage-driver=vfs to avoid needing privileged host mounts
       script: |
+        export BUILDAH_ISOLATION=chroot
         buildah --storage-driver=vfs bud -t $(params.IMAGE) .
       securityContext:
         privileged: false
-        runAsUser: 1000  # Run as a standard user
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
         capabilities:
           add: ["SETFCAP"]
