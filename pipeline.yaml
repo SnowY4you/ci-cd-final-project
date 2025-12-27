@@ -1,0 +1,17 @@
+- name: build
+      taskRef:
+        name: openshift-client
+      runAfter: [unit-tests]
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: SCRIPT
+          value: |
+            # 1. Start the binary build from the workspace
+            # We use --wait to make sure it finishes before moving on
+            oc start-build $(params.app-name) --from-dir=$(workspaces.source.path) --follow --wait
+            
+            # 2. Explicitly tag the image so the 'latest' manifest is created
+            # This ensures 'name unknown' error goes away
+            oc tag $(params.app-name):latest $(params.app-name):latest
