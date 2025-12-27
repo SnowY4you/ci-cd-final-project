@@ -1,4 +1,59 @@
-- name: build
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ci-cd-pipeline
+  namespace: sn-labs-svanbuggenum
+spec:
+  params:
+    - name: repo-url
+      type: string
+    - name: branch
+      type: string
+      default: "main"
+    - name: build-image
+      type: string
+    - name: app-name
+      type: string
+      default: "hitcounter"
+  workspaces:
+    - name: pipeline-workspace
+  tasks:
+    - name: cleanup
+      taskRef:
+        name: cleanup
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      runAfter: [cleanup]
+      workspaces:
+        - name: output
+          workspace: pipeline-workspace
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.branch)
+    - name: lint
+      taskRef:
+        name: flake8
+      runAfter: [fetch-repository]
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: args
+          value: "--max-line-length=120 ."
+    - name: unit-tests
+      taskRef:
+        name: nose
+      runAfter: [lint]
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+    - name: build
       taskRef:
         name: openshift-client
       runAfter: [unit-tests]
@@ -15,3 +70,11 @@
             # 2. Explicitly tag the image so the 'latest' manifest is created
             # This ensures 'name unknown' error goes away
             oc tag $(params.app-name):latest $(params.app-name):latest
+  finally:
+    - name: deploy
+      taskRef:
+        name: openshift-client
+      params:
+        - name: SCRIPT
+          value: |
+            oc create deployment $(params.app-name) --image=$(params.build-image) --dry-run=client -o yaml | oc apply -f -
