@@ -9,17 +9,14 @@ spec:
   workspaces:
     - name: source
   steps:
-    - name: build
+    - name: build-and-push
       image: quay.io/buildah/stable:latest
       workingDir: $(workspaces.source.path)
-      # Use --storage-driver=vfs to avoid needing privileged host mounts
       script: |
-        export BUILDAH_ISOLATION=chroot
-        buildah --storage-driver=vfs bud -t $(params.IMAGE) .
+        # Use vfs and ignore-chown-errors to bypass restricted UID mapping
+        buildah --storage-driver=vfs bud \
+          --isolation=chroot \
+          --ignore-chown-errors \
+          -t $(params.IMAGE) .
       securityContext:
         privileged: false
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        capabilities:
-          add: ["SETFCAP"]
